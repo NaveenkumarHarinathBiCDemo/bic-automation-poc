@@ -1,0 +1,74 @@
+name: BiC UI Regression
+
+# Three triggers, deliberately:
+#   push              -> regression on every change
+#   workflow_dispatch -> the manual "Run workflow" button, for a demo or a hotfix check
+#   schedule          -> nightly cron, so a break is found before the team starts
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: "Which tests to run"
+        required: true
+        default: "all"
+        type: choice
+        options: [all, navigation, connection, workflow]
+  schedule:
+    - cron: "0 11 * * 1-5"   # 05:00 Saskatchewan, weekdays (cron is UTC)
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install Playwright browser
+        run: python -m playwright install --with-deps chromium
+
+      - name: Select suite
+        id: select
+        run: |
+          case "${{ github.event.inputs.suite || 'all' }}" in
+            navigation) echo "target=tests/test_navigation.py"          >> "$GITHUB_OUTPUT" ;;
+            connection) echo "target=tests/test_connection_settings.py" >> "$GITHUB_OUTPUT" ;;
+            workflow)   echo "target=tests/test_setup_workflow.py"      >> "$GITHUB_OUTPUT" ;;
+            *)          echo "target=tests"                             >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - name: Run tests
+        env:
+          PYTHONPATH: .
+        run: python -m pytest ${{ steps.select.outputs.target }} --junitxml=reports/junit.xml
+
+      - name: Upload HTML report and failure screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report-${{ github.run_number }}
+          path: reports/
+          retention-days: 14
+
+      - name: Publish summary
+        if: always()
+        run: |
+          echo "### BiC UI Regression — run #${{ github.run_number }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Suite: \`${{ github.event.inputs.suite || 'all' }}\`  ·  Trigger: \`${{ github.event_name }}\`" >> "$GITHUB_STEP_SUMMARY"
+          grep -o 'tests="[0-9]*"' reports/junit.xml | head -1 >> "$GITHUB_STEP_SUMMARY" || true
