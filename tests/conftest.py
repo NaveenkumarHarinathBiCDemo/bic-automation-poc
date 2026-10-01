@@ -35,7 +35,8 @@ def _free_port() -> int:
 def base_url():
     """Serve app/ over real HTTP so the suite exercises a network stack, not file://."""
     port = _free_port()
-    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(APP_DIR))
+    handler = functools.partial(
+        http.server.SimpleHTTPRequestHandler, directory=str(APP_DIR))
     socketserver.TCPServer.allow_reuse_address = True
     httpd = socketserver.TCPServer(("127.0.0.1", port), handler)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
@@ -53,7 +54,8 @@ def playwright_instance():
 def browser(playwright_instance):
     browser = playwright_instance.chromium.launch(
         headless=HEADLESS,
-        slow_mo=int(os.getenv("SLOWMO", "0")),   # ms pause between actions, for demos
+        # ms pause between actions, for demos
+        slow_mo=int(os.getenv("SLOWMO", "0")),
     )
     yield browser
     browser.close()
@@ -63,7 +65,8 @@ def browser(playwright_instance):
 def ipad_context(playwright_instance, browser):
     """iPad Pro 11 landscape, touch enabled -- Playwright's own device descriptor."""
     device = dict(playwright_instance.devices["iPad Pro 11"])
-    device["viewport"] = {"width": 1194, "height": 834}   # landscape; BiC is landscape-locked
+    # landscape; BiC is landscape-locked
+    device["viewport"] = {"width": 1194, "height": 834}
     device["screen"] = {"width": 1194, "height": 834}
     ctx = browser.new_context(**device)
     yield ctx

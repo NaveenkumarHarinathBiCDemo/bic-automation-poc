@@ -30,7 +30,8 @@ def test_save_is_blocked_until_something_actually_changes(connection):
 @pytest.mark.parametrize("bad_ip", ["192.168.200", "999.1.1.1", "not-an-ip", ""])
 def test_invalid_ip_is_rejected_and_blocks_save(connection, bad_ip):
     connection.set_ip(bad_ip)
-    assert connection.ip_error_visible(), f"{bad_ip!r} should raise a validation error"
+    assert connection.ip_error_visible(
+    ), f"{bad_ip!r} should raise a validation error"
     assert not connection.save_enabled()
 
 
@@ -53,3 +54,4 @@ def test_undo_restores_the_last_saved_values(connection):
     connection.set_ip("10.0.0.5")
     connection.undo()
     assert connection.values()["ip"] == WIFI_DEFAULTS["ip"]
+    print(connection.values()["ip"])
