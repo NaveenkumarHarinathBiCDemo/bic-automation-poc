@@ -54,4 +54,4 @@ def test_undo_restores_the_last_saved_values(connection):
     connection.set_ip("10.0.0.5")
     connection.undo()
     assert connection.values()["ip"] == WIFI_DEFAULTS["ip"]
-    print(connection.values()["ip"])
+    print("ip")
